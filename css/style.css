@@ -1,0 +1,347 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+
+::-webkit-scrollbar {
+  display: none;
+}
+    
+
+    :root {
+      color-scheme: dark; /* темні нативні елементи: список select, чекбокси */
+      --bg: #070a13;
+      --card: #161b22;
+      --card-2: #21262d;
+      --text: #c9d1d9;
+      --text-bright: #f0f6fc;
+      --muted: #8b949e;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --border: #30363d;
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 320px;
+      scrollbar-width: none;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    h1 {
+      color: var(--text-bright);
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .meta {
+      font-family: "Fira Code", monospace;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    button {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: var(--card-2);
+      color: var(--text-bright);
+      font-weight: 600;
+      font-family: inherit;
+      padding: 9px 12px;
+      margin: 4px 0;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    button:hover {
+      background: #30363d;
+      border-color: #8b949e;
+      color: #ffffff;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    /* Головна акцентна кнопка */
+    #btnMaterial {
+      background: var(--accent);
+      border-color: rgba(240, 246, 254, 0.1);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(35, 134, 54, 0.3);
+    }
+
+    #btnMaterial:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Кнопка зупинки / другорядні */
+    #btnStop {
+      background: rgba(248, 81, 73, 0.1);
+      border-color: rgba(248, 81, 73, 0.3);
+      color: #ff7b72;
+    }
+    #btnStop:hover {
+      background: rgba(248, 81, 73, 0.2);
+    }
+
+    label {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 8px 0;
+      font-size: 12px;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    input[type="checkbox"] {
+      accent-color: #238636;
+      margin-top: 2px;
+      cursor: pointer;
+    }
+
+    select {
+      width: 100%;
+      background: var(--card);
+      color: var(--text-bright);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 10px;
+      font: inherit;
+      font-size: 12.5px;
+      margin: 6px 0 10px;
+      outline: none;
+      cursor: pointer;
+    }
+    select:hover {
+      border-color: #8b949e;
+    }
+
+    #out {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      white-space: pre-wrap;
+      margin-top: 10px;
+      padding: 10px;
+      min-height: 40px;
+      font-family: "Fira Code", monospace;
+      font-size: 11.5px;
+      color: #58a6ff;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid var(--border);
+      margin: 10px 0;
+    }
+
+/* ============ Налаштування: бічна панель, що розкривається ============ */
+html, body { overflow: hidden; }
+
+body {
+  width: 320px;
+  transition: width .35s cubic-bezier(.4, 0, .2, 1);
+}
+body.settings-open { width: 760px; }  /* ліміт ширини popup у Chrome/Brave — 800px */
+
+.layout { display: flex; align-items: flex-start; }
+.main { flex: 0 0 292px; min-width: 0; }
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.head h1 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+button.ghost {
+  width: auto;
+  margin: 0;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+}
+button.ghost:hover { background: var(--card-2); color: var(--text-bright); }
+body.settings-open button.ghost { color: var(--text-bright); border-color: var(--muted); }
+
+/* Закрито: висота 0, невидимо; відкрито: розкривається по висоті й проявляється */
+.settings {
+  flex: 0 0 426px;
+  margin-left: 14px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(16px);
+  transition:
+    max-height .35s cubic-bezier(.4, 0, .2, 1),
+    opacity .25s ease,
+    transform .35s cubic-bezier(.4, 0, .2, 1),
+    visibility 0s linear .35s;
+}
+body.settings-open .settings {
+  max-height: 572px;
+  overflow-y: auto;
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s, .08s, 0s, 0s;
+}
+
+.settings-title {
+  color: var(--text-bright);
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+
+.group {
+  background: rgba(22, 27, 34, 0.45);          /* напівпрозорі «скляні» картки: крізь них видно зорі */
+  border: 1px solid rgba(48, 54, 61, 0.75);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  border-radius: var(--radius);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.group h3 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.group select { margin: 4px 0 6px; background: rgba(7, 10, 19, 0.45); border-color: rgba(48, 54, 61, 0.75); }
+.group .meta { background: rgba(7, 10, 19, 0.45); border-color: rgba(48, 54, 61, 0.75); margin-bottom: 6px; }
+.group button {
+  margin: 4px 0 0;
+  background: rgba(33, 38, 45, 0.5);
+  border-color: rgba(48, 54, 61, 0.75);
+  box-shadow: none;
+}
+.group button:hover { background: rgba(48, 54, 61, 0.7); border-color: #8b949e; }
+
+.hint {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0 0 2px 24px;
+}
+.note {
+  font-family: "Fira Code", monospace;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: pre-wrap;
+  margin-top: 6px;
+}
+.note:empty { display: none; }
+.group > .hint:last-child { margin-left: 0; margin-top: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  body, .settings { transition: none; }
+}
+
+
+/* ============ Фон: зорі + неонові лінії (js/neon-bg.js), як на сайті ============ */
+#neon-bg {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  display: block;
+}
+
+/* Ледь помітна «туманність» і віньєтка позаду зірок */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 40% at 18% 12%, rgba(94, 84, 150, 0.09), transparent 60%),
+    radial-gradient(ellipse 50% 38% at 82% 78%, rgba(46, 78, 130, 0.08), transparent 62%),
+    radial-gradient(ellipse 65% 45% at 65% 30%, rgba(60, 50, 90, 0.05), transparent 65%),
+    radial-gradient(ellipse 130% 90% at 50% 100%, rgba(2, 3, 8, 0.55), transparent 70%),
+    radial-gradient(ellipse 130% 90% at 50% 0%, rgba(2, 3, 8, 0.35), transparent 70%);
+}
+
+
+/* ============ Логотип і блиск на «JS Tools» (як на сайті) ============ */
+.logo {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.25), 0 0 10px rgba(88, 166, 255, 0.18);
+}
+
+/* У спокої колір той самий #58a6ff — змінюється лише під час проходу блиску */
+.head h1 .accent { color: #58a6ff; }
+
+@keyframes shine {
+  0%   { background-position: 100% 0; }
+  16%  { background-position: 0% 0; }
+  100% { background-position: 0% 0; }
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .head h1 .accent {
+    background-image: linear-gradient(100deg, #58a6ff 0%, #58a6ff 43%, #a9d1ff 50%, #58a6ff 57%, #58a6ff 100%);
+    background-size: 250% 100%;
+    background-repeat: no-repeat;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: shine 6s ease-in-out 1.8s infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .head h1 .accent { animation: none; }
+}

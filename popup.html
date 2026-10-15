@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="uk">
+
+<head>
+    <meta charset="utf-8">
+    <title>JS Tools Ext</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+    <div class="layout">
+
+        <!-- Головний екран: лише дії -->
+        <main class="main">
+            <header class="head">
+                <h1>
+                    <img class="logo" src="ico/ico128.png" alt="" width="24" height="24">
+                    <span class="title"><span class="accent">JS Tools</span> Ext.</span>
+                </h1>
+                <button id="btnSettings" class="ghost" aria-expanded="false" aria-controls="settings">⚙ Налаштування</button>
+            </header>
+
+            <button id="btnDetect">Що на сторінці?</button>
+            <button id="btnMaterial">▶ Усе автоматично: матеріал → тест</button>
+            <button id="btnQuiz">Лише тест (на сторінці)</button>
+            <button id="btnStop">Стоп</button>
+            <div id="out"></div>
+        </main>
+
+        <!-- Налаштування: приховані, розкриваються з анімацією; згруповані за темами -->
+        <aside class="settings" id="settings" aria-label="Налаштування">
+            <h2 class="settings-title">Налаштування</h2>
+
+            <section class="group">
+                <h3>Тест</h3>
+                <select id="set">
+                    <option value="">Тест: шукати по всій базі</option>
+                </select>
+                <label><input type="checkbox" id="autoclick" checked> Ставити відповіді автоматично</label>
+                <label><input type="checkbox" id="autofinish" checked> Автоматично «Завершити» тест</label>
+                <small class="hint">«Завершити» натискається лише якщо відповіді знайдено на всі питання.</small>
+                <div id="lastQuiz" class="note"></div>
+            </section>
+
+            <section class="group">
+                <h3>База відповідей</h3>
+                <div class="meta" id="meta">…</div>
+                <button id="btnSync">Оновити базу з GitHub</button>
+            </section>
+
+            <section class="group">
+                <h3>Діагностика</h3>
+                <button id="btnDiag">Діагностика тесту</button>
+                <small class="hint">Результат з'явиться в полі зліва.</small>
+            </section>
+        </aside>
+
+    </div>
+    <script src="js/neon-bg.js"></script>
+    <script src="popup.js"></script>
+</body>
+
+</html>

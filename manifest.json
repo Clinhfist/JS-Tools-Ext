@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "JS Tools Ext",
+  "version": "1.7.0",
+  "description": "Матеріали курсу та тести: логіка в розширенні, база відповідей з GitHub.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "https://raw.githubusercontent.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "ico/ico16.png",
+    "32": "ico/ico32.png",
+    "48": "ico/ico48.png",
+    "128": "ico/ico128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "JS Tools Ext",
+    "default_icon": {
+      "16": "ico/ico16.png",
+      "32": "ico/ico32.png",
+      "48": "ico/ico48.png",
+      "128": "ico/ico128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "js": [
+        "engine/common.js",
+        "engine/quiz.js",
+        "engine/slides.js",
+        "engine/video.js",
+        "engine/pdf.js",
+        "engine/flow.js",
+        "content.js"
+      ],
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true,
+      "run_at": "document_idle"
+    }
+  ]
+}
