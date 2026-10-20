@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "JS Tools Ext",
-  "version": "1.7.0",
+  "version": "1.9.0",
   "description": "Матеріали курсу та тести: логіка в розширенні, база відповідей з GitHub.",
   "permissions": [
     "storage",
@@ -43,6 +43,7 @@
         "engine/video.js",
         "engine/pdf.js",
         "engine/flow.js",
+        "engine/check.js",
         "content.js"
       ],
       "all_frames": true,

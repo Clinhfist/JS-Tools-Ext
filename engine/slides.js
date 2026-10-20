@@ -32,6 +32,9 @@ CH.slides = (() => {
         return setTimeout(tick, s.nextDelay);
       }
 
+      // 2.5. Слайд «Перевір себе»: відповіді дає engine/check.js — тут чекаємо, поки слайд перемкнеться
+      if (CH.check && CH.check.present(cfg)) return setTimeout(tick, s.buttonDelay);
+
       // 3. Інтерактивні кнопки, поки «Далі» неактивне
       const fresh = interactive().find(b => !state.clicked.has(key(b)));
       if (fresh) {

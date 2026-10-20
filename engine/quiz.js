@@ -187,5 +187,13 @@ CH.quiz = (() => {
     }
   }
 
-  return { run, autoWatch, stop: () => { runId++; watchToken++; } };
+  // Усі правильні відповіді з бази (нормалізовані) — для слайдів «Перевір себе»
+  function knownTexts(db) {
+    const { qMap, medical } = build(db, null);
+    const all = new Set(medical);
+    qMap.forEach(set => set.forEach(x => all.add(x)));
+    return all;
+  }
+
+  return { run, autoWatch, knownTexts, stop: () => { runId++; watchToken++; } };
 })();

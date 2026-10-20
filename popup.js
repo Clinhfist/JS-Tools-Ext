@@ -45,7 +45,7 @@ async function renderMeta() {
   sel.length = 1;
   (db?.index || []).filter(e => e.answers).forEach(e => {
     const o = document.createElement("option");
-    o.value = e.answers; o.textContent = "Тест: " + e.title;
+    o.value = e.answers; o.textContent = e.title;
     sel.appendChild(o);
   });
   sel.value = settings?.only || "";

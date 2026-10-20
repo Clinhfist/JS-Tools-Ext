@@ -24,6 +24,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           if (info.slides) r = { kind: "slides", ...CH.slides.start(cfg) };
           else if (info.video) r = { kind: "video", ...CH.video.run() };
           else if (info.pdf) r = { kind: "pdf", ...CH.pdf.run() };
+          // Слайди «Перевір себе» можуть бути в будь-якому фреймі презентації — слідкуємо в кожному
+          const hasCheck = CH.check.present(cfg);
+          CH.check.start(cfg);
+          if (hasCheck) {
+            const n = "проходжу «Перевір себе»: варіант → «Дати відповідь»";
+            r = r.kind ? { ...r, note: (r.note ? r.note + "; " : "") + n } : { kind: "check", started: true, note: n };
+          }
           if (window === window.top) {
             const fl = CH.flow.start(cfg);
             const note = "чекаю кнопку «Завершити» → «Перейти до тестування»";
@@ -56,7 +63,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           return sendResponse({ kind: "quizWatch", watching: true });
 
         case "stop":
-          CH.slides.stop(); CH.quiz.stop(); CH.flow.stop();
+          CH.slides.stop(); CH.quiz.stop(); CH.flow.stop(); CH.check.stop();
           return sendResponse({ stopped: true });
       }
       sendResponse({ error: "unknown-cmd" });

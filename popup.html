@@ -33,8 +33,9 @@
 
             <section class="group">
                 <h3>Тест</h3>
-                <select id="set">
-                    <option value="">Тест: шукати по всій базі</option>
+                <div class="field-label" id="setLabel">Набір питань</div>
+                <select id="set" aria-labelledby="setLabel">
+                    <option value="">Вся база (усі набори)</option>
                 </select>
                 <label><input type="checkbox" id="autoclick" checked> Ставити відповіді автоматично</label>
                 <label><input type="checkbox" id="autofinish" checked> Автоматично «Завершити» тест</label>
@@ -57,6 +58,7 @@
 
     </div>
     <script src="js/neon-bg.js"></script>
+    <script src="js/dropdown.js"></script>
     <script src="popup.js"></script>
 </body>
 
