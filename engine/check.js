@@ -1,112 +1,162 @@
-// Слайди «Перевір себе» у Storyline: на них не можна перейти далі, поки не дано правильну відповідь.
-// Алгоритм: клік по варіанту -> «Дати відповідь» -> якщо слайд не змінився, пробуємо наступний варіант
-// -> і так по колу, доки слайд не перемкнеться. Далі презентацію гортає engine/slides.js.
+// Слайди «Перевір себе» у Storyline (шар доступності «acc-shadow»).
+// Як це влаштовано (за діагностикою реального слайда):
+//   варіанти  = input.acc-radio (aria-hidden="true", коли їх перекриває шар відгуку);
+//   їхній текст = div.acc-text, що має в data-represents id варіанта;
+//   відповідь = button.acc-button «Дати відповідь»;
+//   після неї відкривається шар: «Спробувати ще» (хибно) або «Продовжити» (правильно).
+// Алгоритм: вибрати варіант -> «Дати відповідь» -> «Спробувати ще» і наступний варіант
+//           або «Продовжити» -> далі презентацію гортає engine/slides.js.
 // Працює в КОЖНОМУ фреймі (презентацію малює iframe) і лише зі своїм document.
-// Варіанти, що є в базі відповідей, пробуються першими.
 CH.check = (() => {
   const DEF = {
-    option: '[data-field="optionText"], .text.resizeable-text', // текст варіанта (як у medicine.js)
-    clickable: '.cs-button, button, label, [role="button"], [role="radio"], [role="checkbox"]',
+    optionInput: "input.acc-radio",
     submitTexts: ["Дати відповідь"],
-    retryTexts: ["Спробувати ще", "Спробуйте ще", "Спробувати ще раз", "Ще раз"],
+    retryTexts: ["Спробувати ще", "Спробуйте ще", "Спробувати ще раз"],
+    continueTexts: ["Продовжити"],
     pollMs: 400,
-    selectWaitMs: 2500,   // скільки чекати, поки «Дати відповідь» стане активною після вибору
-    resultWaitMs: 3000,   // скільки чекати зміни слайда після відповіді
-    maxRounds: 3,         // скільки разів обійти всі варіанти, перш ніж здатися
-    minOptionLen: 3       // відсікає «літери-позначки» A, B, C, D
+    selectDelayMs: 600,  // пауза між вибором варіанта і «Дати відповідь» (анімація стану)
+    submitWaitMs: 4000,  // скільки чекати шар відгуку після відповіді
+    maxRounds: 3         // скільки разів обійти всі варіанти, перш ніж здатися
   };
   let st = null;
   let timer = null;
+  // Короткі повідомлення в консоль (F12) — видно, на якому кроці зупинилось
+  const dbg = (...a) => console.info("[JS Tools Ext · check]", ...a);
 
   const conf = cfg => ({ ...DEF, ...(cfg.slides?.check || {}) });
 
-  // Повна послідовність подій — надійніше за один .click() для кастомних Storyline-об'єктів
+  // Елемент «живий»: не перекритий шаром (aria-hidden), не вимкнений, має розміри.
+  // pointer-events тут НЕ перевіряємо: у тіньових acc-елементів воно завжди none.
+  const live = el => el.getAttribute("aria-hidden") !== "true" && !el.disabled && CH.shown(el);
+
+  // Імітація миші (запасний шлях): повна послідовність подій із координатами центру
   function press(el) {
-    ["pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach(t =>
-      el.dispatchEvent(new MouseEvent(t, { bubbles: true, cancelable: true, view: window })));
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const o = { bubbles: true, cancelable: true, view: window, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 };
+    ["pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach(t => el.dispatchEvent(new MouseEvent(t, o)));
   }
 
-  const clickables = c => [...document.querySelectorAll(c.clickable)];
-
-  function findByText(words, c) {
+  const accButtons = () => [...document.querySelectorAll("button.acc-button, button.acc-shadow-el")];
+  function button(words) {
     const ws = words.map(CH.norm);
-    const hit = el => { const t = CH.norm(el.textContent); return !!t && ws.some(w => t === w || (t.includes(w) && t.length <= w.length + 6)); };
-    // 1) сама кнопка; 2) текстовий об'єкт, чий клікабельний предок — кнопка
-    let el = clickables(c).find(e => hit(e) && CH.shown(e));
-    if (el) return el;
-    const txt = [...document.querySelectorAll(c.option)].find(e => hit(e) && CH.shown(e));
-    return txt ? (txt.closest(c.clickable) || txt) : null;
+    return accButtons().find(b => {
+      if (!live(b)) return false;
+      const t = CH.norm(b.textContent);
+      return !!t && ws.some(w => t === w || (t.includes(w) && t.length <= w.length + 6));
+    }) || null;
   }
+  const radios = c => [...document.querySelectorAll(c.optionInput)].filter(live);
+  const idOf = el => (el.id || "").replace(/^acc-/, "");
 
-  function findOptions(c, submit) {
-    const seen = new Set();
-    const out = [];
-    const controls = new Set([...c.submitTexts, ...c.retryTexts].map(CH.norm));
-    document.querySelectorAll(c.option).forEach(el => {
-      if (!CH.shown(el) || (submit && submit.contains(el))) return;
-      const key = CH.norm(el.textContent);
-      if (key.length < c.minOptionLen || controls.has(key)) return; // літери-позначки та кнопки керування
-      const target = el.closest(c.clickable);
-      if (!target || seen.has(target)) return; // питання, заголовки, лічильник — без клікабельного предка
-      if (submit && (target === submit || target.contains(submit))) return;
-      seen.add(target);
-      out.push({ key, target });
+  // Текст варіанта: найдовший acc-text, у data-represents якого є id варіанта (без «ПРАВИЛЬНА ВІДПОВІДЬ» і літер A–D)
+  function optionText(radio) {
+    const id = idOf(radio);
+    let best = "";
+    document.querySelectorAll(".acc-shadow-el.acc-text[data-represents]").forEach(el => {
+      if (!(el.getAttribute("data-represents") || "").includes("." + id + ".")) return;
+      const t = (el.textContent || "").replace(/\s+/g, " ").trim();
+      if (t.length < 3 || CH.norm(t) === "правильнавідповідь") return;
+      if (t.length > best.length) best = t;
     });
-    return out;
+    return best;
   }
 
-  const signature = (opts, submit) => opts.map(o => o.key).join("|") + (submit ? "#s" : "");
+  function questionText(optionKeys) {
+    let best = "";
+    document.querySelectorAll(".acc-shadow-el.acc-text").forEach(el => {
+      if (el.getAttribute("aria-hidden") === "true") return;
+      const t = (el.textContent || "").replace(/\s+/g, " ").trim();
+      if (t.length < 12 || optionKeys.has(CH.norm(t)) || /^google shape/i.test(t)) return;
+      const score = t.length + (t.includes("?") ? 1000 : 0);
+      if (score > (best ? best.length + (best.includes("?") ? 1000 : 0) : -1)) best = t;
+    });
+    return best;
+  }
 
-  // Чи є на цій сторінці/фреймі слайд-перевірка (видима кнопка «Дати відповідь»)
-  const present = cfg => !!findByText(conf(cfg).submitTexts, conf(cfg));
+  // Storyline показує вибраний стан у data-acc-text об'єкта: «… 1» — звичайний, «… 2» — вибраний
+  function isSelected(id) {
+    const marks = [...document.querySelectorAll(`[data-model-id="${id}"]`)].map(e => e.getAttribute("data-acc-text") || "").filter(Boolean);
+    return marks.length ? marks.some(m => /\s2$/.test(m)) : null; // null = невідомо
+  }
+  const visual = id => document.querySelector(`.slide-object-stategroup[data-model-id="${id}"]`) || document.querySelector(`[data-model-id="${id}"]`);
+
+  // Чи це слайд-перевірка (щоб автопрохід у slides.js не клікав навмання)
+  function present(cfg) {
+    const c = conf(cfg);
+    if (document.querySelector(c.optionInput)) return true;
+    return !!button(c.submitTexts);
+  }
 
   function start(cfg) {
     if (st?.running) return { already: true };
     const c = conf(cfg);
-    st = { running: true, phase: "idle", sig: null, tried: new Set(), rounds: 0, t0: 0, known: new Set(), solved: 0 };
+    dbg("запущено; фрейм:", location.href.slice(0, 90));
+    st = { running: true, phase: "idle", sig: null, tried: new Set(), rounds: 0, t0: 0, cur: null,
+           fbRadio: false, fbSubmit: false, known: new Set(), db: null, solved: 0 };
     const ready = CH.getDb()
-      .then(db => { if (db && CH.quiz?.knownTexts) st.known = CH.quiz.knownTexts(db); })
+      .then(db => { if (db && CH.quiz) { st.db = db; st.known = CH.quiz.knownTexts(db); } })
       .catch(() => {});
 
-    const nextActive = () => {
-      const n = document.querySelector(cfg.slides?.next || "#next");
-      return !!n && CH.enabled(n);
-    };
+    const resetQ = () => { st.sig = null; st.tried.clear(); st.rounds = 0; st.cur = null; };
 
     const tick = () => {
       if (!st.running) return;
-      const submit = findByText(c.submitTexts, c);
-      if (!submit) { // це не слайд-перевірка (або вона вже пройдена)
-        st.phase = "idle"; st.sig = null; st.tried.clear(); st.rounds = 0;
-        timer = setTimeout(tick, c.pollMs);
-        return;
+      const next = () => { timer = setTimeout(tick, c.pollMs); };
+      const now = Date.now();
+      const hasQuiz = !!document.querySelector(c.optionInput);
+
+      // 1. Шар відгуку: «Продовжити» (правильно) має пріоритет над «Спробувати ще» (хибно)
+      if (hasQuiz || st.phase === "submitted") {
+        const cont = button(c.continueTexts);
+        if (cont) { dbg("правильно → «Продовжити»"); cont.click(); st.solved++; resetQ(); st.phase = "idle"; return next(); }
+        const retry = button(c.retryTexts);
+        if (retry) { dbg("хибно → «Спробувати ще»"); retry.click(); st.phase = "idle"; return next(); } // tried зберігаємо — пробуємо інший варіант
       }
-      const opts = findOptions(c, submit);
-      const sig = signature(opts, submit);
+
+      // 2. Варіанти відповідей, доступні зараз
+      const rs = radios(c);
+      if (!rs.length) { // перехід між шарами або це не слайд-перевірка
+        if (!hasQuiz) { resetQ(); st.phase = "idle"; }
+        else if (st.phase === "submitted" && now - st.t0 > c.submitWaitMs * 2) st.phase = "idle";
+        return next();
+      }
+      const submit = button(c.submitTexts);
+      const opts = rs.map(r => ({ id: idOf(r), radio: r, key: CH.norm(optionText(r)) || idOf(r) }));
+      const sig = opts.map(o => o.key).join("|");
+      if (st.sig !== sig) { resetQ(); st.sig = sig; st.phase = "idle"; } // нове питання
 
       if (st.phase === "idle") {
-        if (st.sig !== sig) { st.sig = sig; st.tried.clear(); st.rounds = 0; } // нове питання
-        const pick = () =>
-          opts.find(o => !st.tried.has(o.key) && st.known.has(o.key)) || opts.find(o => !st.tried.has(o.key));
+        const keys = new Set(opts.map(o => o.key));
+        const qa = st.db && CH.quiz?.answersFor ? CH.quiz.answersFor(st.db, questionText(keys)) : null;
+        const rank = o => (qa && qa.has(o.key) ? 0 : st.known.has(o.key) ? 1 : 2); // відомі з бази — першими
+        const pick = () => opts.filter(o => !st.tried.has(o.key)).sort((a, b) => rank(a) - rank(b))[0];
         let cand = pick();
-        if (!cand && opts.length) {
-          if (st.rounds >= c.maxRounds) { st.running = false; return; } // здаємось, далі працює звичайний автопрохід
+        if (!cand) {
+          if (st.rounds >= c.maxRounds) { dbg("здаюсь: усі варіанти пройдено", c.maxRounds, "разів"); st.running = false; return; } // здаємось, далі працює звичайний автопрохід
           st.rounds++; st.tried.clear(); cand = pick();
         }
-        if (cand) { st.tried.add(cand.key); press(cand.target); st.phase = "selected"; st.t0 = Date.now(); }
+        if (cand) {
+          st.tried.add(cand.key); st.cur = cand; st.fbRadio = false;
+          dbg("варіант:", cand.key.slice(0, 40), "| з бази:", rank(cand) < 2);
+          cand.radio.click();               // основний шлях: через шар доступності
+          st.phase = "selected"; st.t0 = now;
+        }
       } else if (st.phase === "selected") {
-        if (CH.enabled(submit)) { press(submit); st.phase = "submitted"; st.t0 = Date.now(); }
-        else if (Date.now() - st.t0 > c.selectWaitMs) st.phase = "idle"; // не активувалась — інший варіант
-      } else if (st.phase === "submitted") {
-        if (nextActive() || sig !== st.sig) { // слайд змінився або відкрито «Далі» — відповідь правильна
-          st.solved++; st.phase = "idle"; st.sig = null; st.tried.clear(); st.rounds = 0;
-        } else if (Date.now() - st.t0 >= c.resultWaitMs) { // той самий слайд — відповідь хибна
-          const retry = findByText(c.retryTexts, c);
-          if (retry) press(retry);
-          st.phase = "idle";
+        if (now - st.t0 >= c.selectDelayMs) {
+          if (isSelected(st.cur.id) === false && !st.fbRadio) { // нативний клік не позначив варіант — імітуємо мишу
+            dbg("радіо не позначилось → імітую мишу"); st.fbRadio = true; press(visual(st.cur.id)); st.t0 = now; return next();
+          }
+          if (submit) { dbg("→ «Дати відповідь»"); submit.click(); st.phase = "submitted"; st.t0 = now; st.fbSubmit = false; }
+          else if (now - st.t0 > c.selectDelayMs * 5) st.phase = "idle";
+        }
+      } else if (st.phase === "submitted") { // варіанти ще активні, а шару відгуку немає — відповідь не прийнята
+        if (now - st.t0 > c.submitWaitMs) {
+          if (!st.fbSubmit && submit) { dbg("відгуку немає → імітую мишу на «Дати відповідь»"); st.fbSubmit = true; press(visual(idOf(submit))); st.t0 = now; }
+          else st.phase = "idle";
         }
       }
-      timer = setTimeout(tick, c.pollMs);
+      next();
     };
     ready.then(() => { if (st.running) tick(); });
     return { started: true };
@@ -115,6 +165,6 @@ CH.check = (() => {
   return {
     start, present,
     stop() { if (st) st.running = false; clearTimeout(timer); },
-    status: () => ({ ...st, tried: st ? [...st.tried] : [], known: st ? st.known.size : 0 })
+    status: () => (st ? { ...st, tried: [...st.tried], known: st.known.size, db: !!st.db } : null)
   };
 })();

@@ -27,7 +27,7 @@ CH.visible = el => {
 CH.enabled = el =>
   CH.visible(el) &&
   !el.classList.contains("disabled") &&
-  getComputedStyle(el).pointerEvents !== "none";
+  (el.classList.contains("acc-shadow-el") || getComputedStyle(el).pointerEvents !== "none");
 
 // Елемент реально відображається (є розміри, не display:none) — для відсіювання прихованих дублікатів
 CH.shown = el => {

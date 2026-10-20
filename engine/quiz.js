@@ -195,5 +195,12 @@ CH.quiz = (() => {
     return all;
   }
 
-  return { run, autoWatch, knownTexts, stop: () => { runId++; watchToken++; } };
+  // Відповіді з бази на конкретне питання (або null) — для слайдів «Перевір себе»
+  function answersFor(db, questionText) {
+    if (!questionText) return null;
+    const { qMap } = build(db, null);
+    return lookup(qMap, CH.norm(questionText));
+  }
+
+  return { run, autoWatch, knownTexts, answersFor, stop: () => { runId++; watchToken++; } };
 })();
