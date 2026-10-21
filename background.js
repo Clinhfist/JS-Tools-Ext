@@ -81,6 +81,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  // Flow перейшов до наступного модуля: нові фрейми цієї вкладки самі запустять проходження матеріалу
+  if (msg?.type === "autoMaterial" && sender.tab) {
+    chrome.storage.local.set({ autoMaterial: { tabId: sender.tab.id, until: Date.now() + 15 * 60 * 1000 } });
+    return;
+  }
+
+  // Новий фрейм питає, які автоматичні режими активні у його вкладці
+  if (msg?.type === "autoState") {
+    chrome.storage.local.get(["autoQuiz", "autoMaterial"]).then(({ autoQuiz, autoMaterial }) => {
+      const ok = a => !!a && a.tabId === sender.tab?.id && a.until > Date.now();
+      sendResponse({ quiz: ok(autoQuiz), material: ok(autoMaterial) });
+    });
+    return true;
+  }
+
   // Результат автопошуку: значок на іконці розширення + запис для popup
   if (msg?.type === "quizResult" && sender.tab) {
     const ok = msg.unmatched === 0;

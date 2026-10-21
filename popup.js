@@ -51,15 +51,17 @@ async function renderMeta() {
   sel.value = settings?.only || "";
   $("autoclick").checked = settings?.autoclick !== false;
   $("autofinish").checked = settings?.autofinish !== false;
+  $("autonext").checked = settings?.autonext !== false;
 }
 
 // Налаштування зберігаються: їх використовує й автоматичний режим (popup тоді закритий)
 const saveSettings = () =>
   chrome.storage.local.set({
-    settings: { autoclick: $("autoclick").checked, autofinish: $("autofinish").checked, only: $("set").value || null }
+    settings: { autoclick: $("autoclick").checked, autofinish: $("autofinish").checked, autonext: $("autonext").checked, only: $("set").value || null }
   });
 $("autoclick").onchange = saveSettings;
 $("autofinish").onchange = saveSettings;
+$("autonext").onchange = saveSettings;
 $("set").onchange = saveSettings;
 
 // Налаштування: панель розкривається збільшенням body (див. css/style.css)

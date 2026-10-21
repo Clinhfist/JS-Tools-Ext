@@ -1,3 +1,38 @@
+// Запуск обробників матеріалу у цьому фреймі (спільний для кнопки в popup і для автоматичного режиму)
+function startMaterial(cfg, info) {
+  let r = { kind: null };
+  if (info.slides) r = { kind: "slides", ...CH.slides.start(cfg) };
+  else if (info.video) r = { kind: "video", ...CH.video.run() };
+  else if (info.pdf) r = { kind: "pdf", ...CH.pdf.run() };
+  // Слайди «Перевір себе» можуть бути в будь-якому фреймі презентації — слідкуємо в кожному
+  const hasCheck = CH.check.present(cfg);
+  CH.check.start(cfg);
+  if (hasCheck) {
+    const n = "проходжу «Перевір себе»: варіант → «Дати відповідь»";
+    r = r.kind ? { ...r, note: (r.note ? r.note + "; " : "") + n } : { kind: "check", started: true, note: n };
+  }
+  if (window === window.top) {
+    const fl = CH.flow.start(cfg);
+    const note = "чекаю «Завершити» → «Перейти до тестування» / «Продовжити»";
+    if (!r.kind) r = { kind: "flow", ...fl, note };
+    else r.note = (r.note ? r.note + "; " : "") + note;
+  }
+  return r;
+}
+
+// Автоматичний режим для фреймів, створених ПІСЛЯ переходу до наступного модуля:
+// вміст Storyline будується із затримкою, тому чекаємо, поки з'являться слайди чи відео.
+function autoMaterial(cfg) {
+  CH.check.start(cfg);
+  const t0 = Date.now();
+  const iv = setInterval(() => {
+    const info = { slides: CH.slides.supported(cfg), video: CH.video.supported() };
+    if (info.slides) { clearInterval(iv); CH.slides.start(cfg); }
+    else if (info.video) { clearInterval(iv); CH.video.run(); }
+    else if (Date.now() - t0 > 60000) clearInterval(iv);
+  }, 500);
+}
+
 // Працює в КОЖНОМУ фреймі сторінки (all_frames) і працює лише зі своїм document.
 // Popup розсилає команду в усі фрейми, кожен відповідає про себе.
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -19,26 +54,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         case "detect":
           return sendResponse(info);
 
-        case "material": { // визначити тип, запустити обробник; у верхньому фреймі ще й крок LMS
-          let r = { kind: null };
-          if (info.slides) r = { kind: "slides", ...CH.slides.start(cfg) };
-          else if (info.video) r = { kind: "video", ...CH.video.run() };
-          else if (info.pdf) r = { kind: "pdf", ...CH.pdf.run() };
-          // Слайди «Перевір себе» можуть бути в будь-якому фреймі презентації — слідкуємо в кожному
-          const hasCheck = CH.check.present(cfg);
-          CH.check.start(cfg);
-          if (hasCheck) {
-            const n = "проходжу «Перевір себе»: варіант → «Дати відповідь»";
-            r = r.kind ? { ...r, note: (r.note ? r.note + "; " : "") + n } : { kind: "check", started: true, note: n };
-          }
-          if (window === window.top) {
-            const fl = CH.flow.start(cfg);
-            const note = "чекаю кнопку «Завершити» → «Перейти до тестування»";
-            if (!r.kind) r = { kind: "flow", ...fl, note };
-            else r.note = (r.note ? r.note + "; " : "") + note;
-          }
-          return sendResponse(r);
-        }
+        case "material": // визначити тип, запустити обробник; у верхньому фреймі ще й крок LMS
+          return sendResponse(startMaterial(cfg, info));
 
         case "quiz":
           return sendResponse({ kind: "quiz", ...(await CH.quiz.run({ click: msg.click, only: msg.only })) });
@@ -64,6 +81,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
         case "stop":
           CH.slides.stop(); CH.quiz.stop(); CH.flow.stop(); CH.check.stop();
+          chrome.storage.local.remove(["autoMaterial", "autoQuiz"]).catch(() => {});
           return sendResponse({ stopped: true });
       }
       sendResponse({ error: "unknown-cmd" });
@@ -74,13 +92,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return true; // асинхронна відповідь
 });
 
-// Фрейм, створений ПІСЛЯ старту тесту (наприклад, iframe з питаннями): сам перевіряє, чи стежити.
+// Фрейм, створений ПІСЛЯ старту тесту чи переходу до наступного модуля: сам перевіряє, що робити.
 (async () => {
   try {
-    const { autoQuiz } = await chrome.storage.local.get("autoQuiz");
-    if (autoQuiz && autoQuiz.until > Date.now()) {
-      const r = await chrome.runtime.sendMessage({ type: "autoQuizActive" });
-      if (r?.active) CH.quiz.autoWatch();
+    const { autoQuiz, autoMaterial: am } = await chrome.storage.local.get(["autoQuiz", "autoMaterial"]);
+    const now = Date.now();
+    if ((autoQuiz && autoQuiz.until > now) || (am && am.until > now)) {
+      const r = await chrome.runtime.sendMessage({ type: "autoState" });
+      if (r?.quiz) CH.quiz.autoWatch();
+      if (r?.material) { const db = await CH.getDb(); if (db) autoMaterial(db.config); }
     }
   } catch (_) {}
 })();

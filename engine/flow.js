@@ -6,12 +6,15 @@ CH.flow = (() => {
     finishText: "Завершити",               // точний збіг (не «Завершити і вийти», не «Завершити курс»)
     gotoTestText: "Перейти до тестування", // частковий збіг
     startTestText: "Почати тест",          // частковий збіг
+    continueText: "Продовжити",            // вікно завершення модуля БЕЗ тесту: перехід до наступного модуля
+    nextModule: true,                      // false = після «Завершити» без тесту зупинитись
     gotoTest: true,                        // false = лише дійти до вікна, не натискати
     startTest: true,                       // false = зупинитись перед «Почати тест»
     autoQuiz: true,                        // після старту тесту шукати й позначати відповіді
     pollMs: 1000,
     gotoTimeoutMs: 10000,
     startTimeoutMs: 30000,
+    nextWaitMs: 20000,                     // скільки чекати зміни модуля після «Продовжити»
     maxAttempts: 3
   };
   let st = null;
@@ -26,7 +29,12 @@ CH.flow = (() => {
     const finishWord = CH.norm(f.finishText);
     const gotoWord = CH.norm(f.gotoTestText);
     const startWord = CH.norm(f.startTestText);
-    st = { running: true, phase: "finish", attempts: 0, since: 0 };
+    const contWord = CH.norm(f.continueText);
+    st = { running: true, phase: "finish", attempts: 0, since: 0, autonext: true, modules: 0, waitUrl: null, settleUntil: 0 };
+    // Налаштування popup («Переходити до наступного модуля») — до першого кроку
+    const ready = chrome.storage.local.get("settings")
+      .then(r => { st.autonext = r?.settings?.autonext !== false; })
+      .catch(() => {});
 
     const finish = () => { st.running = false; st.done = true; };
 
@@ -46,6 +54,14 @@ CH.flow = (() => {
       }
 
       if (st.phase === "finish") {
+        // Щойно перейшли до наступного модуля: чекаємо, поки зміниться адреса й усе завантажиться,
+        // інакше старе «Завершити» (ще активне) спрацює передчасно
+        if (st.waitUrl) {
+          if (location.href === st.waitUrl && Date.now() - st.since < f.nextWaitMs) { timer = setTimeout(tick, f.pollMs); return; }
+          if (location.href !== st.waitUrl) st.settleUntil = Date.now() + 2500;
+          st.waitUrl = null;
+        }
+        if (st.settleUntil && Date.now() < st.settleUntil) { timer = setTimeout(tick, f.pollMs); return; }
         // На сторінці самого тесту така ж кнопка «Завершити» (completeQuiz) здає тест — не чіпаємо.
         if (!quizHere) {
           const b = buttons().find(el => text(el) === finishWord && CH.enabled(el));
@@ -58,16 +74,25 @@ CH.flow = (() => {
           g.click();
           if (!f.startTest) return finish();
           st.phase = "start"; st.since = Date.now();
-        } else if (Date.now() - st.since > f.gotoTimeoutMs) {
-          if (st.attempts >= f.maxAttempts) return finish();
-          st.phase = "finish"; // вікно не з'явилось — пробуємо ще
+        } else {
+          // Вікно без тесту: «Продовжити» → наступний модуль, і весь ланцюжок повторюється для нього
+          const cont = f.nextModule && st.autonext
+            ? buttons().find(el => text(el) === contWord && CH.visible(el)) : null;
+          if (cont) {
+            cont.click();
+            st.modules++; st.phase = "finish"; st.attempts = 0; st.since = Date.now(); st.waitUrl = location.href;
+            chrome.runtime.sendMessage({ type: "autoMaterial" }).catch(() => {}); // нові фрейми самі запустять матеріал
+          } else if (Date.now() - st.since > f.gotoTimeoutMs) {
+            if (st.attempts >= f.maxAttempts) return finish();
+            st.phase = "finish"; // вікно не з'явилось — пробуємо ще
+          }
         }
       } else if (st.phase === "start") {
         if (Date.now() - st.since > f.startTimeoutMs) return finish(); // кнопки «Почати тест» не дочекались
       }
       timer = setTimeout(tick, f.pollMs);
     };
-    tick();
+    ready.then(() => { if (st.running) tick(); });
     return { started: true };
   }
 
