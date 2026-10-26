@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "JS Tools Ext",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "Матеріали курсу та тести: логіка в розширенні, база відповідей з GitHub.",
   "permissions": [
     "storage",
