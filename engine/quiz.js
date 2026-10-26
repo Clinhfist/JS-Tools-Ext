@@ -135,34 +135,35 @@ CH.quiz = (() => {
     return { summary: { questions: cards.size, highlighted: items.length, unmatched }, clickDone };
   }
 
-  // Чекає (до 10 с), поки кнопка «Завершити» стане активною, і натискає її один раз.
+  // Чекає (до 10 с), поки кнопка «Завершити» (або «Відправити» — на тестах, що вантажаться
+  // по кілька питань) стане активною, і натискає її один раз.
   async function clickFinish(finishWord, token) {
-  const end = Date.now() + 10000;
+    const end = Date.now() + 10000;
 
-  const finishWords = [
-    CH.norm(finishWord || "Завершити"),
-    CH.norm("Відправити")
-  ];
+    const finishWords = [
+      CH.norm(finishWord || "Завершити"),
+      CH.norm("Відправити")
+    ];
 
-  while (token === watchToken && Date.now() < end) {
-    const b = [...document.querySelectorAll(
-      "button, a, [role='button']"
-    )].find(el => {
-      const text = CH.norm(el.textContent);
+    while (token === watchToken && Date.now() < end) {
+      const b = [...document.querySelectorAll(
+        "button, a, [role='button']"
+      )].find(el => {
+        const text = CH.norm(el.textContent);
 
-      return finishWords.includes(text) && CH.enabled(el);
-    });
+        return finishWords.includes(text) && CH.enabled(el);
+      });
 
-    if (b) {
-      b.click();
-      return true;
+      if (b) {
+        b.click();
+        return true;
+      }
+
+      await CH.sleep(300);
     }
 
-    await CH.sleep(300);
+    return false;
   }
-
-  return false;
-}
 
   // Чекає, поки на сторінці з'являться питання (тест ще вантажиться), і запускає run().
   // Продовжує стежити: якщо набір питань змінився (посторінкові тести) — запускає знову.
@@ -187,8 +188,8 @@ CH.quiz = (() => {
         if (!r.error) {
           await clickDone; // дочекались, поки всі відповіді позначено
 
-          // «Завершити» стає активною, коли відповіді дано. Натискаємо лише якщо в базі знайдено
-          // відповіді на ВСІ питання — щоб не спалити спробу на неповному тесті.
+          // «Завершити» / «Відправити» натискаємо лише якщо в базі знайдено відповіді на ВСІ питання —
+          // щоб не спалити спробу на неповному тесті.
           let finished = false;
           if (autoFinish && r.questions > 0 && r.unmatched.length === 0 && my === watchToken) {
             finished = await clickFinish(finishWord, my);
